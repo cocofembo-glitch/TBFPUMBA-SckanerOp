@@ -472,8 +472,7 @@ def scan_folder(path, lang='uk'):
     
     loading_bar(f"{LANG[lang]['scanning']}{path}", lang, 0.005)
     
-    for root, dirs, fil
-es in os.walk(path):
+    for root, dirs, files in os.walk(path):
         total_files += len(files)
     
     loading_bar(f"{LANG[lang]['scanning']}{path}", lang, 0.005)
