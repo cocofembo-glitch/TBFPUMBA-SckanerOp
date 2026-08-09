@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 
 # ============================================
-#   TBFPUMBA-SckanerOp v5.0 (PRO EDITION)
+#   TBFPUMBA-SckanerOp v5.1 (PRO EDITION)
 #   by TBFPUMBA — Technology. Security. Efficiency.
 # ============================================
 
@@ -87,7 +87,7 @@ def loading_bar(title, duration=0.01):
 
 def show_help():
     os.system('clear')
-    rainbow_print("📖 TBFPUMBA-SckanerOp v5.0 — Довідка")
+    rainbow_print("📖 TBFPUMBA-SckanerOp v5.1 — Довідка")
     rainbow_print("========================================")
     rainbow_print("🛡️  Про програму:")
     rainbow_print("  Потужний сканер безпеки для виявлення")
@@ -102,7 +102,7 @@ def show_help():
     rainbow_print("  n     — вийти")
     rainbow_print("")
     rainbow_print("📂  Що сканується:")
-    rainbow_print("  - .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh")
+    rainbow_print("  - .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh, .md")
     rainbow_print("  - .apk файли (аналіз назви, дозволів, розміру)")
     rainbow_print("  - Системні папки: /system, /data, /etc")
     rainbow_print("")
@@ -136,17 +136,21 @@ def check_apk(filepath):
     
     # Перевірка прав (симуляція)
     try:
-        cmd = f"aapt dump permissions {filepath} 2>/dev/null"
-        output = subprocess.getoutput(cmd)
-        for perm in SUSPICIOUS_PERMISSIONS:
-            if perm in output:
-                results.append(("🟡", f"Підозрілий дозвіл: {perm}"))
+        # Перевіряємо, чи є aapt (інструмент для аналізу APK)
+        aapt_check = subprocess.getoutput("which aapt")
+        if aapt_check:
+            cmd = f"aapt dump permissions {filepath} 2>/dev/null"
+            output = subprocess.getoutput(cmd)
+            for perm in SUSPICIOUS_PERMISSIONS:
+                if perm in output:
+                    results.append(("🟡", f"Підозрілий дозвіл: {perm}"))
     except:
         pass
     
     return results
 
 def scan_file(filepath):
+    """Перевіряє файл на наявність підозрілих або критичних патернів"""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
@@ -158,7 +162,8 @@ def scan_file(filepath):
             for pattern in SUSPICIOUS_PATTERNS:
                 if pattern in content:
                     return "🟡", pattern
-    except Exception:
+    except Exception as e:
+        # Якщо файл не можна прочитати — ігноруємо
         pass
     return None, None
 
@@ -195,7 +200,7 @@ def scan_folder(path):
                 continue
             
             # Аналіз текстового вмісту для інших файлів
-            if file.endswith(('.txt', '.sh', '.py', '.js', '.c', '.cpp', '.bash', '.zsh')):
+            if file.endswith(('.txt', '.sh', '.py', '.js', '.c', '.cpp', '.bash', '.zsh', '.md')):
                 level, pattern = scan_file(filepath)
                 if level:
                     suspicious_files.append((filepath, level, pattern))
@@ -223,7 +228,7 @@ def scan_folder(path):
 
 if __name__ == "__main__":
     os.system('clear')
-    rainbow_print("🔥 TBFPUMBA-SckanerOp v5.0 (PRO EDITION) 🔥")
+    rainbow_print("🔥 TBFPUMBA-SckanerOp v5.1 (PRO EDITION) 🔥")
     rainbow_print("⚡ by TBFPUMBA — Technology. Security. Efficiency. ⚡")
     rainbow_print("========================================")
     
@@ -242,8 +247,11 @@ if __name__ == "__main__":
         else:
             print("❗ Введіть 'y', 'n' або 'help'.")
     
+    start_time = datetime.now()
     target_path = os.path.expanduser("~")
     results = scan_folder(target_path)
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
     
     if results:
         critical = [r for r in results if r[1] == "🔴"]
@@ -270,4 +278,5 @@ if __name__ == "__main__":
     else:
         rainbow_print("\n✅ Підозрілих файлів не знайдено. Ваша система чиста!")
     
+    print(f"\n⏱️ Час сканування: {duration:.2f} секунд")
     input("\nНатисніть Enter, щоб вийти...")
