@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 
 # ============================================
-#   TBFPUMBA-SckanerOp v6.0 (TBF EDITION)
+#   TBFPUMBA-SckanerOp v6.1 (FOLDER SELECT)
 #   by TBFPUMBA — Technology. Security. Efficiency.
 # ============================================
 
@@ -68,7 +68,7 @@ SUSPICIOUS_PERMISSIONS = [
     "android.permission.INTERNET"
 ]
 
-# Підозрілі назви файлів (APK, EXE, SH)
+# Підозрілі назви файлів
 SUSPICIOUS_FILENAMES = [
     "hack", "crack", "cheat", "mod", "unlock", "premium", "pro",
     "crypto", "miner", "steal", "fake", "clone", "spy", "track",
@@ -92,7 +92,7 @@ def loading_bar(title, duration=0.01):
 
 def show_help():
     os.system('clear')
-    rainbow_print("📖 TBFPUMBA-SckanerOp v6.0 — Довідка")
+    rainbow_print("📖 TBFPUMBA-SckanerOp v6.1 — Довідка")
     rainbow_print("========================================")
     rainbow_print("🛡️  Про програму:")
     rainbow_print("  Потужний сканер безпеки для виявлення")
@@ -101,17 +101,16 @@ def show_help():
     rainbow_print("🚀  Як запустити:")
     rainbow_print("  python tbfpumba_scan.py")
     rainbow_print("")
+    rainbow_print("📂  Вибір папки:")
+    rainbow_print("  1 — Termux (за замовчуванням)")
+    rainbow_print("  2 — Весь телефон (/storage/emulated/0)")
+    rainbow_print("  3 — Ввести свій шлях")
+    rainbow_print("")
     rainbow_print("⚙️  Команди:")
     rainbow_print("  help   — показати це керівництво")
     rainbow_print("  y      — запустити сканування")
     rainbow_print("  -TBF   — видалити всі знайдені загрози")
     rainbow_print("  n      — вийти")
-    rainbow_print("")
-    rainbow_print("📂  Що сканується:")
-    rainbow_print("  - .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh, .md")
-    rainbow_print("  - .apk файли (аналіз назви, дозволів, розміру)")
-    rainbow_print("  - .bin, .exe (за назвою та сигнатурами)")
-    rainbow_print("  - Системні папки: /system, /data, /etc")
     rainbow_print("")
     rainbow_print("🔴  Рівні загроз:")
     rainbow_print("  🔴 Критична — може пошкодити систему")
@@ -145,8 +144,31 @@ def delete_threats(threats):
     else:
         rainbow_print("\n❌ Видалення скасовано.")
 
+def choose_folder():
+    """Вибирає папку для сканування"""
+    print("\n📂 Виберіть папку для сканування:")
+    print("  1. Termux (за замовчуванням)")
+    print("  2. Весь телефон (/storage/emulated/0)")
+    print("  3. Ввести свій шлях")
+    
+    choice = input("\n👉 Виберіть (1/2/3): ").strip()
+    
+    if choice == "1":
+        return os.path.expanduser("~")
+    elif choice == "2":
+        return "/storage/emulated/0"
+    elif choice == "3":
+        custom_path = input("📂 Введіть шлях: ").strip()
+        if os.path.exists(custom_path):
+            return custom_path
+        else:
+            print(f"{RED}❌ Шлях не існує! Використовую Termux.{RESET}")
+            return os.path.expanduser("~")
+    else:
+        print(f"{YELLOW}⚠️ Невірний вибір. Використовую Termux.{RESET}")
+        return os.path.expanduser("~")
+
 def check_file_by_name(filepath):
-    """Перевіряє назву файлу на підозрілі слова"""
     filename = os.path.basename(filepath).lower()
     for pattern in SUSPICIOUS_FILENAMES:
         if pattern in filename:
@@ -154,7 +176,6 @@ def check_file_by_name(filepath):
     return None
 
 def check_apk(filepath):
-    """Аналізує APK файл"""
     results = []
     filename = os.path.basename(filepath).lower()
     size = os.path.getsize(filepath) // (1024 * 1024)
@@ -183,7 +204,6 @@ def check_apk(filepath):
     return results
 
 def scan_file_content(filepath):
-    """Перевіряє вміст файлу на підозрілі патерни"""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
@@ -198,7 +218,6 @@ def scan_file_content(filepath):
     return None, None
 
 def scan_file(filepath):
-    """Повна перевірка файлу: назва + вміст"""
     results = []
     name_check = check_file_by_name(filepath)
     if name_check:
@@ -260,15 +279,18 @@ def scan_folder(path):
 
 if __name__ == "__main__":
     os.system('clear')
-    rainbow_print("🔥 TBFPUMBA-SckanerOp v6.0 (TBF EDITION) 🔥")
+    rainbow_print("🔥 TBFPUMBA-SckanerOp v6.1 (FOLDER SELECT) 🔥")
     rainbow_print("⚡ by TBFPUMBA — Technology. Security. Efficiency. ⚡")
     rainbow_print("========================================")
     
     loading_bar("Ініціалізація сканера", 0.02)
     
+    target_path = choose_folder()
+    rainbow_print(f"\n📂 Обрано: {target_path}")
+    
     threats = []
     while True:
-        answer = input("⚠️ Запустити сканування? (y/n/help/-TBF): ").lower()
+        answer = input("\n⚠️ Запустити сканування? (y/n/help/-TBF): ").lower()
         if answer in ['y', 'yes']:
             break
         elif answer in ['n', 'no']:
@@ -276,6 +298,8 @@ if __name__ == "__main__":
             sys.exit()
         elif answer == 'help':
             show_help()
+            target_path = choose_folder()
+            rainbow_print(f"\n📂 Обрано: {target_path}")
             continue
         elif answer == '-tbf':
             delete_threats(threats)
@@ -284,7 +308,6 @@ if __name__ == "__main__":
             print("❗ Введіть 'y', 'n', 'help' або '-TBF'.")
     
     start_time = datetime.now()
-    target_path = os.path.expanduser("~")
     results = scan_folder(target_path)
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
