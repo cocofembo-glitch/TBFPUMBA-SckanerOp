@@ -4,11 +4,10 @@ import sys
 import time
 
 # ============================================
-#   TBFPUMBA-SckanerOp v2.1
+#   TBFPUMBA-SckanerOp v3.0
 #   by TBFPUMBA — Technology. Security. Efficiency.
 # ============================================
 
-# 🟢 Підозрілі паттерни (жовтий рівень)
 SUSPICIOUS_PATTERNS = [
     "rm -rf",
     "format",
@@ -17,7 +16,6 @@ SUSPICIOUS_PATTERNS = [
     "virus"
 ]
 
-# 🔴 КРИТИЧНІ паттерни (червоний рівень) - реальна загроза
 HIGH_RISK_PATTERNS = [
     "rm -rf --no-preserve-root",
     "dd if=/dev/zero of=/dev/block",
@@ -32,36 +30,73 @@ HIGH_RISK_PATTERNS = [
     "iptables -X",
     "killall -9",
     "pkill -f",
-    ":(){ :|:& };:"   # fork bomb
+    ":(){ :|:& };:"
 ]
 
-def loading_animation():
-    print("\n🔍 Ініціалізація сканера TBFPUMBA...")
+def show_help():
+    os.system('clear')
+    print("📖 TBFPUMBA-SckanerOp — Довідка")
+    print("========================================")
+    print("🛡️  Про програму:")
+    print("  Сканер безпеки для виявлення підозрілих")
+    print("  та критичних загроз у файлах Termux.")
+    print("")
+    print("🚀  Як запустити:")
+    print("  python tbfpumba_scan.py")
+    print("")
+    print("⚙️  Команди:")
+    print("  help  — показати це керівництво")
+    print("  y     — запустити сканування")
+    print("  n     — вийти")
+    print("")
+    print("📂  Що сканується:")
+    print("  Файли з розширеннями: .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh")
+    print("")
+    print("🔴  Рівні загроз:")
+    print("  🔴 Критична — може пошкодити систему")
+    print("  🟡 Підозріла — потребує перевірки")
+    print("")
+    print("🔒  Безпека:")
+    print("  Сканер не змінює файли, тільки аналізує.")
+    print("========================================")
+    input("\nНатисніть Enter, щоб закрити довідку...")
+
+def loading_animation_scan():
+    print("\n📂 Сканування файлів...\n")
     for i in range(101):
-        time.sleep(0.015)
+        time.sleep(0.01)
+        bar = "█" * (i // 2) + "░" * (50 - i // 2)
+        print(f"\r[{bar}] {i}%", end="")
+    print("\n✅ Аналіз завершено!\n")
+
+def loading_animation_init():
+    print("\n🔍 Ініціалізація сканера...")
+    for i in range(101):
+        time.sleep(0.02)
         print(f"\r[{ '█' * (i//2) }{ '░' * (50 - i//2) }] {i}%", end="")
-    print("\n✅ Сканер готовий до роботи!\n")
+    print("\n✅ Готово до роботи!\n")
 
 def ask_user():
     while True:
-        answer = input("⚠️ Запустити сканування? (y/n): ").lower()
+        answer = input("⚠️ Запустити сканування? (y/n/help): ").lower()
         if answer in ['y', 'yes']:
             return True
         elif answer in ['n', 'no']:
             print("❌ Сканування скасовано.")
             sys.exit()
+        elif answer == 'help':
+            show_help()
+            continue
         else:
-            print("❗ Введіть 'y' або 'n'.")
+            print("❗ Введіть 'y', 'n' або 'help'.")
 
 def scan_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-            # Перевірка на критичні загрози (червоний)
             for pattern in HIGH_RISK_PATTERNS:
                 if pattern in content:
                     return "🔴", pattern
-            # Перевірка на підозрілі (жовтий)
             for pattern in SUSPICIOUS_PATTERNS:
                 if pattern in content:
                     return "🟡", pattern
@@ -72,6 +107,7 @@ def scan_file(filepath):
 def scan_folder(path):
     suspicious_files = []
     print(f"\n📂 Сканування папки: {path}\n")
+    loading_animation_scan()
     for root, dirs, files in os.walk(path):
         for file in files:
             filepath = os.path.join(root, file)
@@ -89,11 +125,11 @@ def scan_folder(path):
 
 if __name__ == "__main__":
     os.system('clear')
-    print("🔥 TBFPUMBA-SckanerOp v2.1 🔥")
+    print("🔥 TBFPUMBA-SckanerOp v3.0 🔥")
     print("⚡ by TBFPUMBA — Technology. Security. Efficiency. ⚡")
     print("========================================")
     
-    loading_animation()
+    loading_animation_init()
     if not ask_user():
         sys.exit()
     
@@ -105,17 +141,16 @@ if __name__ == "__main__":
         suspicious = [r for r in results if r[1] == "🟡"]
         
         if critical:
-            print("\n🔴🔴🔴 КРИТИЧНІ ЗАГРОЗИ (терміново перевірити!):")
+            print("\n🔴🔴🔴 КРИТИЧНІ ЗАГРОЗИ:")
             for file, level, pattern in critical:
                 print(f"  🔴 {file} (патерн: {pattern})")
-        
         if suspicious:
-            print("\n🟡 Підозрілі файли (рекомендується перевірити):")
+            print("\n🟡 ПІДОЗРІЛІ ФАЙЛИ:")
             for file, level, pattern in suspicious:
                 print(f"  🟡 {file} (патерн: {pattern})")
-        
-        print("\n⚠️ Рекомендується перевірити ці файли вручну.")
+        print("\n⚠️ Рекомендується перевірити ці файли.")
     else:
         print("\n✅ Підозрілих файлів не знайдено. Ваша система чиста!")
     
-    print("\n🔒 Сканування завершено. Дякуємо, що використовуєте TBFPUMBA-SckanerOp!")
+    print("\n🔒 Сканування завершено.")
+    input("Натисніть Enter, щоб вийти...")
