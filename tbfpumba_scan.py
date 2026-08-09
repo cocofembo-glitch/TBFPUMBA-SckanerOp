@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 
 # ============================================
-#   TBFPUMBA-SckanerOp v5.2 (FULL SCAN)
+#   TBFPUMBA-SckanerOp v6.0 (TBF EDITION)
 #   by TBFPUMBA — Technology. Security. Efficiency.
 # ============================================
 
@@ -22,7 +22,7 @@ WHITE = '\033[97m'
 RESET = '\033[0m'
 BOLD = '\033[1m'
 
-# Розширений список підозрілих паттернів для текстових файлів
+# Розширений список підозрілих паттернів
 SUSPICIOUS_PATTERNS = [
     "rm -rf", "format", "delete_all", "malware", "virus",
     "backdoor", "trojan", "rootkit", "keylogger", "ransomware",
@@ -92,14 +92,20 @@ def loading_bar(title, duration=0.01):
 
 def show_help():
     os.system('clear')
-    rainbow_print("📖 TBFPUMBA-SckanerOp v5.2 — Довідка")
+    rainbow_print("📖 TBFPUMBA-SckanerOp v6.0 — Довідка")
     rainbow_print("========================================")
     rainbow_print("🛡️  Про програму:")
     rainbow_print("  Потужний сканер безпеки для виявлення")
-    rainbow_print("  підозрілих та критичних загроз у файлах.")
+    rainbow_print("  та ВИДАЛЕННЯ підозрілих та критичних загроз.")
     rainbow_print("")
     rainbow_print("🚀  Як запустити:")
     rainbow_print("  python tbfpumba_scan.py")
+    rainbow_print("")
+    rainbow_print("⚙️  Команди:")
+    rainbow_print("  help   — показати це керівництво")
+    rainbow_print("  y      — запустити сканування")
+    rainbow_print("  -TBF   — видалити всі знайдені загрози")
+    rainbow_print("  n      — вийти")
     rainbow_print("")
     rainbow_print("📂  Що сканується:")
     rainbow_print("  - .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh, .md")
@@ -116,6 +122,29 @@ def show_help():
     rainbow_print("========================================")
     input("\nНатисніть Enter, щоб закрити довідку...")
 
+def delete_threats(threats):
+    """Видаляє знайдені загрози"""
+    if not threats:
+        rainbow_print("\n✅ Немає загроз для видалення.")
+        return
+    
+    print(f"\n{RED}⚠️ ВИДАЛЕННЯ ЗАГРОЗ!{RESET}")
+    print(f"{RED}Буде видалено {len(threats)} файлів.{RESET}")
+    answer = input(f"{RED}Впевнені? (y/n): {RESET}").lower()
+    
+    if answer in ['y', 'yes']:
+        deleted = 0
+        for filepath, level, msg in threats:
+            try:
+                os.remove(filepath)
+                print(f"{GREEN}✅ Видалено: {filepath}{RESET}")
+                deleted += 1
+            except Exception as e:
+                print(f"{RED}❌ Не вдалося видалити: {filepath} ({e}){RESET}")
+        rainbow_print(f"\n🔒 Видалено {deleted} з {len(threats)} загроз.")
+    else:
+        rainbow_print("\n❌ Видалення скасовано.")
+
 def check_file_by_name(filepath):
     """Перевіряє назву файлу на підозрілі слова"""
     filename = os.path.basename(filepath).lower()
@@ -130,19 +159,16 @@ def check_apk(filepath):
     filename = os.path.basename(filepath).lower()
     size = os.path.getsize(filepath) // (1024 * 1024)
     
-    # Перевірка назви
     for pattern in SUSPICIOUS_FILENAMES:
         if pattern in filename:
             results.append(("🟡", f"Підозріла назва APK: {pattern}"))
             break
     
-    # Перевірка розміру
     if size < 0.5:
         results.append(("🟡", f"APK занадто малий: {size} МБ"))
     elif size > 100:
         results.append(("🟡", f"APK занадто великий: {size} МБ"))
     
-    # Перевірка прав (якщо є aapt)
     try:
         aapt_check = subprocess.getoutput("which aapt")
         if aapt_check:
@@ -174,17 +200,12 @@ def scan_file_content(filepath):
 def scan_file(filepath):
     """Повна перевірка файлу: назва + вміст"""
     results = []
-    
-    # Перевірка назви
     name_check = check_file_by_name(filepath)
     if name_check:
         results.append(("🟡", name_check))
-    
-    # Перевірка вмісту (для текстових файлів)
     level, pattern = scan_file_content(filepath)
     if level:
         results.append((level, pattern))
-    
     return results
 
 def scan_folder(path):
@@ -192,7 +213,6 @@ def scan_folder(path):
     total_files = 0
     scanned_files = 0
     
-    # Підрахунок файлів для прогресу
     for root, dirs, files in os.walk(path):
         total_files += len(files)
     
@@ -203,11 +223,9 @@ def scan_folder(path):
             scanned_files += 1
             filepath = os.path.join(root, file)
             
-            # Пропускаємо сам сканер
             if filepath == os.path.realpath(__file__):
                 continue
             
-            # Аналіз APK
             if file.endswith('.apk'):
                 print(f"{CYAN}📦 APK файл: {filepath}{RESET}")
                 apk_results = check_apk(filepath)
@@ -219,7 +237,6 @@ def scan_folder(path):
                         color_print(f"🟡 ПОПЕРЕДЖЕННЯ: {filepath} -> {msg}", YELLOW)
                 continue
             
-            # Аналіз виконуваних файлів (без розширення)
             if os.access(filepath, os.X_OK) and not file.endswith(('.txt', '.sh', '.py', '.js', '.md')):
                 name_check = check_file_by_name(filepath)
                 if name_check:
@@ -227,7 +244,6 @@ def scan_folder(path):
                     color_print(f"🟡 ВИКОНУВАНИЙ ФАЙЛ: {filepath} -> {name_check}", YELLOW)
                 continue
             
-            # Аналіз текстового вмісту
             if file.endswith(('.txt', '.sh', '.py', '.js', '.c', '.cpp', '.bash', '.zsh', '.md', '.conf', '.cfg')):
                 results = scan_file(filepath)
                 for level, msg in results:
@@ -237,7 +253,6 @@ def scan_folder(path):
                     else:
                         color_print(f"🟡 ПІДОЗРІЛИЙ ФАЙЛ: {filepath} -> {msg}", YELLOW)
             
-            # Прогрес
             if scanned_files % 50 == 0:
                 print(f"{BLUE}📊 Прогрес: {scanned_files}/{total_files}{RESET}")
     
@@ -245,14 +260,15 @@ def scan_folder(path):
 
 if __name__ == "__main__":
     os.system('clear')
-    rainbow_print("🔥 TBFPUMBA-SckanerOp v5.2 (FULL SCAN) 🔥")
+    rainbow_print("🔥 TBFPUMBA-SckanerOp v6.0 (TBF EDITION) 🔥")
     rainbow_print("⚡ by TBFPUMBA — Technology. Security. Efficiency. ⚡")
     rainbow_print("========================================")
     
     loading_bar("Ініціалізація сканера", 0.02)
     
+    threats = []
     while True:
-        answer = input("⚠️ Запустити сканування? (y/n/help): ").lower()
+        answer = input("⚠️ Запустити сканування? (y/n/help/-TBF): ").lower()
         if answer in ['y', 'yes']:
             break
         elif answer in ['n', 'no']:
@@ -261,8 +277,11 @@ if __name__ == "__main__":
         elif answer == 'help':
             show_help()
             continue
+        elif answer == '-tbf':
+            delete_threats(threats)
+            sys.exit()
         else:
-            print("❗ Введіть 'y', 'n' або 'help'.")
+            print("❗ Введіть 'y', 'n', 'help' або '-TBF'.")
     
     start_time = datetime.now()
     target_path = os.path.expanduser("~")
@@ -273,6 +292,7 @@ if __name__ == "__main__":
     if results:
         critical = [r for r in results if r[1] == "🔴"]
         suspicious = [r for r in results if r[1] == "🟡"]
+        threats = results
         
         print("\n" + "="*50)
         rainbow_print("🔍 РЕЗУЛЬТАТИ СКАНУВАННЯ")
@@ -288,12 +308,22 @@ if __name__ == "__main__":
             for file, level, msg in suspicious:
                 color_print(f"  🟡 {file} -> {msg}", YELLOW)
         
-        if not critical and not suspicious:
-            rainbow_print("\n✅ Підозрілих файлів не знайдено. Ваша система чиста!")
-        
-        color_print(f"\n🔒 Сканування завершено. Знайдено: {len(results)} підозрілих файлів.", BLUE)
+        color_print(f"\n🔒 Знайдено: {len(results)} підозрілих файлів.", BLUE)
+        color_print(f"💡 Для видалення всіх загроз введіть: -TBF", CYAN)
+        threats = results
     else:
-        rainbow_print("\n✅ Підозрілих файлів не знайдено. Ваша система чиста!")
+        rainbow_print("\n✅ Підозрілих файлів не знайдено.")
+        threats = []
     
     print(f"\n⏱️ Час сканування: {duration:.2f} секунд")
-    input("\nНатисніть Enter, щоб вийти...")
+    
+    while True:
+        cmd = input("\n💡 Введіть команду (-TBF для видалення, Enter для виходу): ").strip()
+        if cmd == '-TBF':
+            delete_threats(threats)
+            sys.exit()
+        elif cmd == '':
+            rainbow_print("👋 Дякуємо, що використовуєте TBFPUMBA-SckanerOp!")
+            sys.exit()
+        else:
+            print("❌ Невідома команда. Введіть -TBF або натисніть Enter.")
