@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 
 # ============================================
-#   TBFPUMBA-SckanerOp v5.1 (PRO EDITION)
+#   TBFPUMBA-SckanerOp v5.2 (FULL SCAN)
 #   by TBFPUMBA — Technology. Security. Efficiency.
 # ============================================
 
@@ -22,7 +22,7 @@ WHITE = '\033[97m'
 RESET = '\033[0m'
 BOLD = '\033[1m'
 
-# Розширений список підозрілих паттернів
+# Розширений список підозрілих паттернів для текстових файлів
 SUSPICIOUS_PATTERNS = [
     "rm -rf", "format", "delete_all", "malware", "virus",
     "backdoor", "trojan", "rootkit", "keylogger", "ransomware",
@@ -63,12 +63,17 @@ SUSPICIOUS_PERMISSIONS = [
     "android.permission.WRITE_EXTERNAL_STORAGE",
     "android.permission.READ_PHONE_STATE",
     "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.ACCESS_COARSE_LOCATION"
+    "android.permission.ACCESS_COARSE_LOCATION",
+    "android.permission.INSTALL_PACKAGES",
+    "android.permission.INTERNET"
 ]
 
-SUSPICIOUS_APK_PATTERNS = [
+# Підозрілі назви файлів (APK, EXE, SH)
+SUSPICIOUS_FILENAMES = [
     "hack", "crack", "cheat", "mod", "unlock", "premium", "pro",
-    "crypto", "miner", "steal", "fake", "clone", "spy", "track"
+    "crypto", "miner", "steal", "fake", "clone", "spy", "track",
+    "exploit", "payload", "backdoor", "trojan", "ransomware",
+    "keylogger", "rootkit", "virus", "malware"
 ]
 
 def rainbow_print(text):
@@ -87,7 +92,7 @@ def loading_bar(title, duration=0.01):
 
 def show_help():
     os.system('clear')
-    rainbow_print("📖 TBFPUMBA-SckanerOp v5.1 — Довідка")
+    rainbow_print("📖 TBFPUMBA-SckanerOp v5.2 — Довідка")
     rainbow_print("========================================")
     rainbow_print("🛡️  Про програму:")
     rainbow_print("  Потужний сканер безпеки для виявлення")
@@ -96,47 +101,49 @@ def show_help():
     rainbow_print("🚀  Як запустити:")
     rainbow_print("  python tbfpumba_scan.py")
     rainbow_print("")
-    rainbow_print("⚙️  Команди:")
-    rainbow_print("  help  — показати це керівництво")
-    rainbow_print("  y     — запустити сканування")
-    rainbow_print("  n     — вийти")
-    rainbow_print("")
     rainbow_print("📂  Що сканується:")
     rainbow_print("  - .txt, .sh, .py, .js, .c, .cpp, .bash, .zsh, .md")
     rainbow_print("  - .apk файли (аналіз назви, дозволів, розміру)")
+    rainbow_print("  - .bin, .exe (за назвою та сигнатурами)")
     rainbow_print("  - Системні папки: /system, /data, /etc")
     rainbow_print("")
     rainbow_print("🔴  Рівні загроз:")
     rainbow_print("  🔴 Критична — може пошкодити систему")
     rainbow_print("  🟡 Підозріла — потребує перевірки")
-    rainbow_print("  🔵 Інформаційна — для відома")
     rainbow_print("")
     rainbow_print("🔒  Безпека:")
     rainbow_print("  Сканер не змінює файли, тільки аналізує.")
     rainbow_print("========================================")
     input("\nНатисніть Enter, щоб закрити довідку...")
 
+def check_file_by_name(filepath):
+    """Перевіряє назву файлу на підозрілі слова"""
+    filename = os.path.basename(filepath).lower()
+    for pattern in SUSPICIOUS_FILENAMES:
+        if pattern in filename:
+            return f"🟡 Підозріла назва: {pattern}"
+    return None
+
 def check_apk(filepath):
-    """Аналізує APK файл без розпакування"""
+    """Аналізує APK файл"""
     results = []
     filename = os.path.basename(filepath).lower()
-    size = os.path.getsize(filepath) // (1024 * 1024)  # Розмір у МБ
+    size = os.path.getsize(filepath) // (1024 * 1024)
     
     # Перевірка назви
-    for pattern in SUSPICIOUS_APK_PATTERNS:
+    for pattern in SUSPICIOUS_FILENAMES:
         if pattern in filename:
-            results.append(("🔴", f"Підозріла назва: {pattern}"))
+            results.append(("🟡", f"Підозріла назва APK: {pattern}"))
             break
     
-    # Перевірка розміру (занадто маленький APK може бути підозрілим)
-    if size < 0.5:  # Менше 0.5 МБ
-        results.append(("🟡", f"Занадто маленький розмір: {size} МБ"))
-    elif size > 100:  # Більше 100 МБ
-        results.append(("🟡", f"Дуже великий розмір: {size} МБ"))
+    # Перевірка розміру
+    if size < 0.5:
+        results.append(("🟡", f"APK занадто малий: {size} МБ"))
+    elif size > 100:
+        results.append(("🟡", f"APK занадто великий: {size} МБ"))
     
-    # Перевірка прав (симуляція)
+    # Перевірка прав (якщо є aapt)
     try:
-        # Перевіряємо, чи є aapt (інструмент для аналізу APK)
         aapt_check = subprocess.getoutput("which aapt")
         if aapt_check:
             cmd = f"aapt dump permissions {filepath} 2>/dev/null"
@@ -149,23 +156,36 @@ def check_apk(filepath):
     
     return results
 
-def scan_file(filepath):
-    """Перевіряє файл на наявність підозрілих або критичних патернів"""
+def scan_file_content(filepath):
+    """Перевіряє вміст файлу на підозрілі патерни"""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-            # Перевірка на критичні загрози
             for pattern in HIGH_RISK_PATTERNS:
                 if pattern in content:
                     return "🔴", pattern
-            # Перевірка на підозрілі
             for pattern in SUSPICIOUS_PATTERNS:
                 if pattern in content:
                     return "🟡", pattern
-    except Exception as e:
-        # Якщо файл не можна прочитати — ігноруємо
+    except Exception:
         pass
     return None, None
+
+def scan_file(filepath):
+    """Повна перевірка файлу: назва + вміст"""
+    results = []
+    
+    # Перевірка назви
+    name_check = check_file_by_name(filepath)
+    if name_check:
+        results.append(("🟡", name_check))
+    
+    # Перевірка вмісту (для текстових файлів)
+    level, pattern = scan_file_content(filepath)
+    if level:
+        results.append((level, pattern))
+    
+    return results
 
 def scan_folder(path):
     suspicious_files = []
@@ -199,26 +219,23 @@ def scan_folder(path):
                         color_print(f"🟡 ПОПЕРЕДЖЕННЯ: {filepath} -> {msg}", YELLOW)
                 continue
             
-            # Аналіз текстового вмісту для інших файлів
-            if file.endswith(('.txt', '.sh', '.py', '.js', '.c', '.cpp', '.bash', '.zsh', '.md')):
-                level, pattern = scan_file(filepath)
-                if level:
-                    suspicious_files.append((filepath, level, pattern))
-                    if level == "🔴":
-                        color_print(f"🔴 КРИТИЧНА ЗАГРОЗА: {filepath} (знайдено: '{pattern}')", RED)
-                    else:
-                        color_print(f"🟡 ПІДОЗРІЛИЙ ФАЙЛ: {filepath} (знайдено: '{pattern}')", YELLOW)
+            # Аналіз виконуваних файлів (без розширення)
+            if os.access(filepath, os.X_OK) and not file.endswith(('.txt', '.sh', '.py', '.js', '.md')):
+                name_check = check_file_by_name(filepath)
+                if name_check:
+                    suspicious_files.append((filepath, "🟡", name_check))
+                    color_print(f"🟡 ВИКОНУВАНИЙ ФАЙЛ: {filepath} -> {name_check}", YELLOW)
+                continue
             
-            # Перевірка прав доступу (системні папки)
-            if root.startswith(('/system', '/data', '/etc')):
-                try:
-                    import stat
-                    mode = os.stat(filepath).st_mode
-                    if mode & stat.S_IRWXO:  # Дозвіл для інших (777)
-                        suspicious_files.append((filepath, "🟡", "Права доступу 777 (всі можуть змінювати)"))
-                        color_print(f"🟡 ПРАВА: {filepath} -> 777 (небезпечно!)", YELLOW)
-                except:
-                    pass
+            # Аналіз текстового вмісту
+            if file.endswith(('.txt', '.sh', '.py', '.js', '.c', '.cpp', '.bash', '.zsh', '.md', '.conf', '.cfg')):
+                results = scan_file(filepath)
+                for level, msg in results:
+                    suspicious_files.append((filepath, level, msg))
+                    if level == "🔴":
+                        color_print(f"🔴 КРИТИЧНА ЗАГРОЗА: {filepath} -> {msg}", RED)
+                    else:
+                        color_print(f"🟡 ПІДОЗРІЛИЙ ФАЙЛ: {filepath} -> {msg}", YELLOW)
             
             # Прогрес
             if scanned_files % 50 == 0:
@@ -228,7 +245,7 @@ def scan_folder(path):
 
 if __name__ == "__main__":
     os.system('clear')
-    rainbow_print("🔥 TBFPUMBA-SckanerOp v5.1 (PRO EDITION) 🔥")
+    rainbow_print("🔥 TBFPUMBA-SckanerOp v5.2 (FULL SCAN) 🔥")
     rainbow_print("⚡ by TBFPUMBA — Technology. Security. Efficiency. ⚡")
     rainbow_print("========================================")
     
