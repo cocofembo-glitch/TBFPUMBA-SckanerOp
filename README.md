@@ -23,10 +23,20 @@
 
 ---
 
+## 🛠️ Зависимости (Requirements)
+
+Для работы интерфейса требуются библиотеки:
+- `rich`
+- `pyfiglet`
+
+Они ставятся автоматически из `requirements.txt`.
+
+---
+
 ## 🚀 Быстрый запуск (Quick Start)
 
-Запусти одну команду в **Termux / Linux**, чтобы установить зависимости и сразу запустить сканер:
+Запусти одну команду в **Termux / Linux**:
 
-```bash
-git clone [https://github.com/cocofembo-glitch/TBFPUMBA-SckanerOp.git](https://github.com/cocofembo-glitch/TBFPUMBA-SckanerOp.git) && cd TBFPUMBA-SckanerOp && pip install -r requirements.txt && python tbfpumba_scan.py
-
+```text
+git clone https://github.com/cocofembo-glitch/TBFPUMBA-SckanerOp.git cd TBFPUMBA-SckanerOp pip install -r requirements.txt
+python tbfpumba_scan.py
