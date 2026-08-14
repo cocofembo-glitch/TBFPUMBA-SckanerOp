@@ -466,10 +466,13 @@ def scan_folder(path, lang='uk'):
     suspicious_files = []
     files_to_scan = []
     
-    for root, dirs, files in os.walk(path):
+        for root, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if 'tbf' not in d.lower()]
         for file in files:
+            if 'tbf' in file.lower():
+                continue
             files_to_scan.append(os.path.join(root, file))
-
+            
     if not files_to_scan:
         return suspicious_files
 
